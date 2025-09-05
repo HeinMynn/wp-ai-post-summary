@@ -15,6 +15,7 @@ add_action('add_meta_boxes', 'ai_post_summary_add_meta_box');
 add_action('save_post', 'ai_post_summary_save_post_meta');
 add_action('publish_post', 'ai_post_summary_auto_generate');
 add_action('save_post', 'ai_post_summary_auto_generate', 20); // Run after save_post_meta
+add_action('transition_post_status', 'ai_post_summary_on_publish', 10, 3); // Handle status transitions
 add_action('wp_ajax_ai_post_summary_check_update', 'ai_post_summary_ajax_check_update');
 add_action('admin_enqueue_scripts', 'ai_post_summary_enqueue_admin_scripts');
 
@@ -317,8 +318,19 @@ function ai_post_summary_auto_generate($post_id) {
     $global_enabled = $options['ai_post_summary_global_enable'] ?? false;
     if (!$global_enabled) return;
     
-    // Check if summary is enabled for this post
+    // Check if summary is enabled for this post or should be auto-enabled
     $post_enabled = get_post_meta($post_id, '_ai_post_summary_enabled', true);
+    
+    // If global is enabled and no explicit setting exists, enable it for new posts
+    if (!$post_enabled && $global_enabled) {
+        $existing_meta = get_post_meta($post_id, '_ai_post_summary_enabled');
+        // If meta doesn't exist at all (new post), auto-enable it
+        if (empty($existing_meta)) {
+            update_post_meta($post_id, '_ai_post_summary_enabled', '1');
+            $post_enabled = true;
+        }
+    }
+    
     if (!$post_enabled) return;
     
     // Check if we should regenerate or if no summary exists
@@ -357,6 +369,16 @@ function ai_post_summary_auto_generate($post_id) {
             echo '</div>';
         });
     }
+}
+
+function ai_post_summary_on_publish($new_status, $old_status, $post) {
+    // Only trigger on publish transition for posts
+    if ($new_status !== 'publish' || $old_status === 'publish' || $post->post_type !== 'post') {
+        return;
+    }
+    
+    // Call the auto-generate function
+    ai_post_summary_auto_generate($post->ID);
 }
 
 function ai_post_summary_ajax_check_update() {
