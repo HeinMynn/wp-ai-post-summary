@@ -4,7 +4,7 @@ Tags: ai, summary, seo, automation, content
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,14 @@ You can set your preferred character count in the settings. The default is 200 c
 4. Summary generation in action with real-time updates
 
 == Changelog ==
+
+= 1.1.0 =
+* Added multilingual support - AI summaries now generated in the same language as content
+* Enhanced language detection for Burmese (Myanmar), Thai, Chinese, Japanese, Korean, Arabic, Hindi, and other languages
+* Fixed global enable validation - now requires API key to be entered before enabling
+* Added warning messages when API key is missing
+* Improved user experience with real-time API key validation
+* Enhanced AI prompts for better language consistency
 
 = 1.0.0 =
 * Initial release

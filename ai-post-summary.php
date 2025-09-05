@@ -3,7 +3,7 @@
  * Plugin Name:       AI Post Summary
  * Plugin URI:        https://wordpress.org/plugins/ai-post-summary/
  * Description:       Automatically generates AI-powered summaries for your blog posts using Google Gemini or OpenAI ChatGPT. Display summaries at the top of posts to improve reader engagement and SEO.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            Aung Hein Mynn
@@ -27,7 +27,7 @@
  * along with AI Post Summary. If not, see https://www.gnu.org/licenses/gpl-2.0.html.
  *
  * @package AIPostSummary
- * @version 1.0.0
+ * @version 1.1.0
  * @author  Aung Hein Mynn
  * @license GPL-2.0-or-later
  */
@@ -38,7 +38,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('AI_POST_SUMMARY_VERSION', '1.0.0');
+define('AI_POST_SUMMARY_VERSION', '1.1.0');
 define('AI_POST_SUMMARY_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('AI_POST_SUMMARY_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('AI_POST_SUMMARY_PLUGIN_FILE', __FILE__);
