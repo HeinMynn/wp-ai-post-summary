@@ -4,7 +4,7 @@ Tags: ai, summary, seo, automation, content
 Requires at least: 5.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 1.1.0
+Stable tag: 1.1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -137,6 +137,12 @@ You can set your preferred character count in the settings. The default is 200 c
 4. Summary generation in action with real-time updates
 
 == Changelog ==
+
+= 1.1.1 =
+* Fixed: Auto-generation now properly respects per-post toggle settings
+* Improved: New posts default to enabled when global setting is on
+* Enhanced: Clearer separation between global and per-post settings
+* Updated: Testing documentation with correct behavior
 
 = 1.1.0 =
 * Added multilingual support - AI summaries now generated in the same language as content

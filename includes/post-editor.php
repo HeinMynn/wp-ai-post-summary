@@ -12,10 +12,10 @@ if (!defined('ABSPATH')) {
 }
 
 add_action('add_meta_boxes', 'ai_post_summary_add_meta_box');
-add_action('save_post', 'ai_post_summary_save_post_meta');
-add_action('publish_post', 'ai_post_summary_auto_generate');
-add_action('save_post', 'ai_post_summary_auto_generate', 20); // Run after save_post_meta
-add_action('transition_post_status', 'ai_post_summary_on_publish', 10, 3); // Handle status transitions
+add_action('save_post', 'ai_post_summary_save_post_meta', 10); // Save meta first
+add_action('publish_post', 'ai_post_summary_auto_generate', 20); // Run after meta is saved
+add_action('save_post', 'ai_post_summary_auto_generate', 25); // Run after save_post_meta with higher priority
+add_action('transition_post_status', 'ai_post_summary_on_publish', 30, 3); // Handle status transitions last
 add_action('wp_ajax_ai_post_summary_check_update', 'ai_post_summary_ajax_check_update');
 add_action('admin_enqueue_scripts', 'ai_post_summary_enqueue_admin_scripts');
 
@@ -45,6 +45,11 @@ function ai_post_summary_meta_box_callback($post) {
     $enabled = get_post_meta($post->ID, '_ai_post_summary_enabled', true);
     $summary = get_post_meta($post->ID, '_ai_post_summary_content', true);
     $global_enabled = get_option('ai_post_summary_settings')['ai_post_summary_global_enable'] ?? false;
+    
+    // For new posts (no existing meta), default to global setting
+    if ($enabled === '' && $global_enabled) {
+        $enabled = '1';
+    }
     
     wp_nonce_field('ai_post_summary_meta', 'ai_post_summary_nonce');
     ?>
@@ -313,24 +318,32 @@ function ai_post_summary_auto_generate($post_id) {
     if (isset($processed[$post_id])) return;
     $processed[$post_id] = true;
     
-    // Check global settings
-    $options = get_option('ai_post_summary_settings');
-    $global_enabled = $options['ai_post_summary_global_enable'] ?? false;
-    if (!$global_enabled) return;
-    
-    // Check if summary is enabled for this post or should be auto-enabled
+    // Check if summary is enabled for this specific post
     $post_enabled = get_post_meta($post_id, '_ai_post_summary_enabled', true);
     
-    // If global is enabled and no explicit setting exists, enable it for new posts
-    if (!$post_enabled && $global_enabled) {
+    // Special handling for new posts - check if the form data indicates it should be enabled
+    if (!$post_enabled && isset($_POST['ai_post_summary_enabled']) && $_POST['ai_post_summary_enabled'] == '1') {
+        // The checkbox is checked in the form, so we should generate
+        $post_enabled = true;
+        // Also save the meta to ensure consistency (this might be why the timing is off)
+        update_post_meta($post_id, '_ai_post_summary_enabled', '1');
+    }
+    
+    // If still not enabled, check if this is a new post and global setting allows it
+    if (!$post_enabled) {
+        $options = get_option('ai_post_summary_settings');
+        $global_enabled = $options['ai_post_summary_global_enable'] ?? false;
+        
+        // For completely new posts (no existing _ai_post_summary_enabled meta at all), use global setting
         $existing_meta = get_post_meta($post_id, '_ai_post_summary_enabled');
-        // If meta doesn't exist at all (new post), auto-enable it
-        if (empty($existing_meta)) {
-            update_post_meta($post_id, '_ai_post_summary_enabled', '1');
+        if (empty($existing_meta) && $global_enabled) {
             $post_enabled = true;
+            // Save the meta for consistency
+            update_post_meta($post_id, '_ai_post_summary_enabled', '1');
         }
     }
     
+    // Only generate if the post-specific toggle is enabled
     if (!$post_enabled) return;
     
     // Check if we should regenerate or if no summary exists
@@ -344,7 +357,8 @@ function ai_post_summary_auto_generate($post_id) {
     $post = get_post($post_id);
     if (!$post || empty($post->post_content)) return;
     
-    // Generate summary
+    // Get options for character count setting
+    $options = get_option('ai_post_summary_settings');
     $char_count = $options['ai_post_summary_char_count'] ?? 200;
     $summary = ai_post_summary_API_Handler::generate_summary($post->post_content, $char_count);
     

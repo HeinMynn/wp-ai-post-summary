@@ -30,35 +30,68 @@ class ai_post_summary_API_Handler {
     private static function detect_language_instruction($content) {
         // Clean content for analysis
         $clean_content = wp_strip_all_tags($content);
-        $sample = substr($clean_content, 0, 500); // Use first 500 characters for detection
+        $sample = substr($clean_content, 0, 1000); // Use first 1000 characters for better detection
         
         // Check for Burmese/Myanmar text (Unicode range U+1000-U+109F)
         if (preg_match('/[\x{1000}-\x{109F}]/u', $sample)) {
-            return "IMPORTANT: The content appears to be in Burmese (Myanmar language). You MUST write the summary in Burmese using Myanmar script. Do not translate to English.";
+            return "CRITICAL INSTRUCTION: The content is in Burmese (Myanmar language). You MUST write the entire summary in Burmese using Myanmar script. Never use English or any other language.";
         }
         
         // Check for common non-Latin scripts
         if (preg_match('/[\x{0E00}-\x{0E7F}]/u', $sample)) { // Thai
-            return "IMPORTANT: Write the summary in Thai language using Thai script.";
+            return "CRITICAL INSTRUCTION: The content is in Thai. You MUST write the entire summary in Thai language using Thai script.";
         }
         if (preg_match('/[\x{4E00}-\x{9FFF}]/u', $sample)) { // Chinese
-            return "IMPORTANT: Write the summary in Chinese using Chinese characters.";
+            return "CRITICAL INSTRUCTION: The content is in Chinese. You MUST write the entire summary in Chinese using Chinese characters.";
         }
         if (preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}]/u', $sample)) { // Japanese
-            return "IMPORTANT: Write the summary in Japanese using appropriate Japanese script.";
+            return "CRITICAL INSTRUCTION: The content is in Japanese. You MUST write the entire summary in Japanese using appropriate Japanese script.";
         }
         if (preg_match('/[\x{AC00}-\x{D7AF}]/u', $sample)) { // Korean
-            return "IMPORTANT: Write the summary in Korean using Hangul script.";
+            return "CRITICAL INSTRUCTION: The content is in Korean. You MUST write the entire summary in Korean using Hangul script.";
         }
         if (preg_match('/[\x{0600}-\x{06FF}]/u', $sample)) { // Arabic
-            return "IMPORTANT: Write the summary in Arabic using Arabic script.";
+            return "CRITICAL INSTRUCTION: The content is in Arabic. You MUST write the entire summary in Arabic using Arabic script.";
         }
         if (preg_match('/[\x{0900}-\x{097F}]/u', $sample)) { // Hindi/Devanagari
-            return "IMPORTANT: Write the summary in Hindi using Devanagari script.";
+            return "CRITICAL INSTRUCTION: The content is in Hindi. You MUST write the entire summary in Hindi using Devanagari script.";
         }
         
-        // Default instruction for likely Latin-based languages
-        return "IMPORTANT: Write the summary in the SAME LANGUAGE as the original content. Maintain the original language throughout the summary.";
+        // Enhanced detection for Latin-based languages
+        $sample_lower = strtolower($sample);
+        
+        // Check for common French words and patterns
+        $french_indicators = ['le ', 'la ', 'les ', 'de ', 'du ', 'des ', 'et ', 'est ', 'être ', 'avoir ', 'que ', 'qui ', 'avec ', 'pour ', 'par ', 'sur ', 'dans ', 'une ', 'un '];
+        $french_count = 0;
+        foreach ($french_indicators as $indicator) {
+            $french_count += substr_count($sample_lower, $indicator);
+        }
+        
+        // Check for common Spanish words and patterns
+        $spanish_indicators = ['el ', 'la ', 'los ', 'las ', 'de ', 'del ', 'y ', 'es ', 'ser ', 'estar ', 'que ', 'con ', 'por ', 'para ', 'en ', 'un ', 'una '];
+        $spanish_count = 0;
+        foreach ($spanish_indicators as $indicator) {
+            $spanish_count += substr_count($sample_lower, $indicator);
+        }
+        
+        // Check for common English words and patterns
+        $english_indicators = ['the ', 'and ', 'is ', 'are ', 'was ', 'were ', 'be ', 'been ', 'being ', 'have ', 'has ', 'had ', 'do ', 'does ', 'did ', 'will ', 'would ', 'could ', 'should ', 'may ', 'might ', 'can ', 'must ', 'shall ', 'to ', 'of ', 'in ', 'for ', 'on ', 'with ', 'at ', 'by ', 'from ', 'as ', 'but ', 'or ', 'if ', 'this ', 'that ', 'these ', 'those ', 'a ', 'an '];
+        $english_count = 0;
+        foreach ($english_indicators as $indicator) {
+            $english_count += substr_count($sample_lower, $indicator);
+        }
+        
+        // Determine language based on word frequency
+        if ($english_count > $french_count && $english_count > $spanish_count && $english_count >= 10) {
+            return "CRITICAL INSTRUCTION: The content is in English. You MUST write the entire summary in English. Never use French, Spanish, or any other language.";
+        } elseif ($french_count > $english_count && $french_count > $spanish_count && $french_count >= 5) {
+            return "CRITICAL INSTRUCTION: The content is in French. You MUST write the entire summary in French.";
+        } elseif ($spanish_count > $english_count && $spanish_count > $french_count && $spanish_count >= 5) {
+            return "CRITICAL INSTRUCTION: The content is in Spanish. You MUST write the entire summary in Spanish.";
+        }
+        
+        // Default instruction - assume English if unclear
+        return "CRITICAL INSTRUCTION: The content appears to be in English. You MUST write the entire summary in English. Do not use French, Spanish, or any other language.";
     }
     
     /**
@@ -102,7 +135,7 @@ class ai_post_summary_API_Handler {
             $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent';
             
             $language_instruction = self::detect_language_instruction($content);
-            $prompt = "Please create a concise summary of the following content in approximately {$char_count} characters. {$language_instruction}\n\nContent to summarize:\n\n" . wp_strip_all_tags($content);
+            $prompt = "You are a professional content summarizer. {$language_instruction}\n\nTask: Create a concise summary of approximately {$char_count} characters.\n\nContent to summarize:\n\n" . wp_strip_all_tags($content);
             
             $body = json_encode([
                 'contents' => [
@@ -162,7 +195,7 @@ class ai_post_summary_API_Handler {
         $url = 'https://api.openai.com/v1/chat/completions';
         
         $language_instruction = self::detect_language_instruction($content);
-        $prompt = "Please create a concise summary of the following content in approximately {$char_count} characters. {$language_instruction}\n\nContent to summarize:\n\n" . wp_strip_all_tags($content);
+        $prompt = "You are a professional content summarizer. {$language_instruction}\n\nTask: Create a concise summary of approximately {$char_count} characters.\n\nContent to summarize:\n\n" . wp_strip_all_tags($content);
         
         $body = json_encode([
             'model' => 'gpt-3.5-turbo',
